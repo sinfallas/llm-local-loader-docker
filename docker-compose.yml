@@ -20,7 +20,7 @@ services:
               count: all
               capabilities: [gpu]
     #volumes:
-    #  - /mnt/ssd/ai/ollama:/root/.ollama
+    #  - ./ollama:/root/.ollama
 
   redis:
     image: redislabs/redismod:latest
@@ -32,7 +32,7 @@ services:
       - REDIS_DATABASES=16
     ##command: redis-server --save 20 1 --loglevel warning
     #volumes: 
-    #  - /mnt/ssd/ai/redis:/data
+    #  - ./redis:/data
 
   postgres:
     image: postgres:latest
@@ -44,7 +44,7 @@ services:
       - POSTGRES_PASSWORD=KrFgLvKJRvinkEG5
       - POSTGRES_DB=langfuse
     #volumes:
-    #  - /mnt/ssd/ai/postgres:/var/lib/postgresql/data
+    #  - ./postgres:/var/lib/postgresql/data
 
   ollama-webui:
     image: ghcr.io/open-webui/open-webui:main
@@ -60,7 +60,7 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     #volumes:
-    #  - /mnt/ssd/ai/open-webui:/app/backend/data
+    #  - ./open-webui:/app/backend/data
     #restart: unless-stopped
 
   flowise:
@@ -101,7 +101,7 @@ services:
     links:
       - redis
     #volumes:
-    #  - /mnt/ssd/ai/flowise:/root/.flowise
+    #  - ./flowise:/root/.flowise
     command: /bin/sh -c "sleep 3; flowise start"
 
   langfuse:
