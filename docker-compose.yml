@@ -1,0 +1,126 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    privileged: true
+    pull_policy: always
+    runtime: nvidia
+    tty: true
+    ulimits:
+      memlock: -1
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    #restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    #volumes:
+    #  - /mnt/ssd/ai/ollama:/root/.ollama
+
+  redis:
+    image: redislabs/redismod:latest
+    container_name: redis
+    pull_policy: always
+    #restart: unless-stopped
+    environment:
+      - REDIS_PORT=6379
+      - REDIS_DATABASES=16
+    ##command: redis-server --save 20 1 --loglevel warning
+    #volumes: 
+    #  - /mnt/ssd/ai/redis:/data
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    pull_policy: always
+    #restart: unless-stopped
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=KrFgLvKJRvinkEG5
+      - POSTGRES_DB=langfuse
+    #volumes:
+    #  - /mnt/ssd/ai/postgres:/var/lib/postgresql/data
+
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ollama-webui
+    pull_policy: always
+    depends_on:
+      - ollama
+    ports:
+      - 8080:8080
+    environment:
+      - "OLLAMA_BASE_URL=http://ollama:11434/api"
+      - 'WEBUI_SECRET_KEY='
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    #volumes:
+    #  - /mnt/ssd/ai/open-webui:/app/backend/data
+    #restart: unless-stopped
+
+  flowise:
+    image: flowiseai/flowise:latest
+    container_name: flowise
+    pull_policy: always
+    depends_on:
+      - ollama
+      - redis
+    #restart: unless-stopped
+    environment:
+      - PORT=3000
+      - DATABASE_PATH=/root/.flowise
+      - APIKEY_PATH=/root/.flowise
+      - SECRETKEY_PATH=/root/.flowise
+      - LOG_PATH=/root/.flowise/logs
+      - REDIS_URL=redis://redis:6379
+      #- FLOWISE_USERNAME=user
+      #- FLOWISE_PASSWORD=1234
+      #- DEBUG=true
+      #- LOG_LEVEL=debug
+      #- DATABASE_TYPE=postgres
+      #- DATABASE_PORT=5432
+      #- DATABASE_HOST=localhost
+      #- DATABASE_NAME="flowise"
+      #- DATABASE_USER=
+      #- DATABASE_PASSWORD=
+      #- FLOWISE_SECRETKEY_OVERWRITE=myencryptionkey
+      #- NUMBER_OF_PROXIES= 1
+      #- TOOL_FUNCTION_BUILTIN_DEP=crypto,fs
+      #- TOOL_FUNCTION_EXTERNAL_DEP=moment,lodash
+      #- LANGCHAIN_TRACING_V2=true
+      #- LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+      #- LANGCHAIN_API_KEY=your_api_key
+      #- LANGCHAIN_PROJECT=your_project
+    ports:
+      - 3000:3000
+    links:
+      - redis
+    #volumes:
+    #  - /mnt/ssd/ai/flowise:/root/.flowise
+    command: /bin/sh -c "sleep 3; flowise start"
+
+  langfuse:
+    image: ghcr.io/langfuse/langfuse:latest
+    container_name: langfuse
+    pull_policy: always
+    #restart: unless-stopped
+    depends_on:
+      - postgres
+      - flowise
+    ports:
+      - 4000:3000
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://user:KrFgLvKJRvinkEG5@postgres:5432/langfuse
+      - NEXTAUTH_SECRET=mysecret
+      - SALT=mysalt
+      - NEXTAUTH_URL=http://localhost:4000
+      - TELEMETRY_ENABLED=${TELEMETRY_ENABLED:-true}
+      - NEXT_PUBLIC_SIGN_UP_DISABLED=${NEXT_PUBLIC_SIGN_UP_DISABLED:-false}
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=${LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES:-false}
+
